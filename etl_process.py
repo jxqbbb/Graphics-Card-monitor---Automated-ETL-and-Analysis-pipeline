@@ -364,7 +364,7 @@ class AmazonScrapeGPU():
     # database - name of used database
     # table - table of chosen database where data should be stored
     # host - host of the database
-    # engine - optional parameter for non MySQL users, valid sqlalchemy create_enginge string should be passed
+    # engine_str - optional parameter for non MySQL users, valid sqlalchemy create_enginge string should be passed
     # double underscore indicates that it is private function
     def __load_to_db(self,data,database_user=os.environ.get("DB_USER"),database_password=os.environ.get("DB_PASS"),\
                       database="gpu_monitoring",table="gpu_info",host="localhost",engine_str=None\
