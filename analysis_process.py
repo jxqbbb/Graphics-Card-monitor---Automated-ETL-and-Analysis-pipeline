@@ -191,5 +191,3 @@ def gpu_analysis_dashboard(plot_name1=None,plot_name2=None,database_user=os.envi
     # display the plot
     plt.show()
  
-# sample usage, saving plots as "test1" and "test2"
-gpu_analysis_dashboard("test1","test2")
