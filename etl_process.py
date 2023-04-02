@@ -364,14 +364,19 @@ class AmazonScrapeGPU():
     # database - name of used database
     # table - table of chosen database where data should be stored
     # host - host of the database
+    # engine - optional parameter for non MySQL users, valid sqlalchemy create_enginge string should be passed
     # double underscore indicates that it is private function
     def __load_to_db(self,data,database_user=os.environ.get("DB_USER"),database_password=os.environ.get("DB_PASS"),\
-                      database="gpu_monitoring",table="gpu_info",host="localhost",\
+                      database="gpu_monitoring",table="gpu_info",host="localhost",engine_str=None\
                     ):
         # try to connect to specified database
         try:
+            # if engine parameter was not passed create engine based on parameters for MySQL
+            if not engine_str:
             # connecting using sqlalchemy package
-            engine = create_engine(f'mysql+pymysql://{database_user}:{database_password}@{host}/{database}')
+                engine = create_engine(f'mysql+pymysql://{database_user}:{database_password}@{host}/{database}')
+            else:
+                engine = create_engine(engine_str)
             # insert data into the table, if table doesn't exist it will be created otherwhise data will be appended
             data.to_sql(name=table,con=engine,if_exists="append",index=False)
             self.email_message+= f"Data successfully loaded {len(data)} rows  to database\n"
