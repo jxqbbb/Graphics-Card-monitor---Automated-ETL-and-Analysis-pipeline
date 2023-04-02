@@ -365,8 +365,12 @@ class AmazonScrapeGPU():
         # data cleaning is in most cases manual job and it's hard to predict format of hundreds collected values
         # to automate that process but based on my research and tests this should work
         try:
+            # create variable indicating if data was successfully cleaned or not
+            # it will be need when insterting data to database
+            self.is_data_cleaned = True
             return self.__prepare_data()
         except:
+            self.is_data_cleaned = False
             # note that cleaning wasn't sucessful
             self.email_message += "Cleaning part of the script failed\n"
             return self.data_frame
@@ -399,8 +403,14 @@ class AmazonScrapeGPU():
             else:
                 engine = create_engine(self.engine_str)
             # insert data into the table, if table doesn't exist it will be created otherwhise data will be appended
-            data.to_sql(name=self.table,con=engine,if_exists="append",index=False)
-            self.email_message+= f"Successfully loaded {len(data)} rows  to database\n"
+            # if data was cleaned successfully insert data into main table
+            if self.is_data_cleaned:
+                data.to_sql(name=self.table,con=engine,if_exists="append",index=False)
+                self.email_message+= f"Successfully loaded {len(data)} rows  to database\n"
+            # otherwise insert data into backup table and store data for later manual cleaning    
+            else:
+                data.to_sql(name=f'{self.table}_uncleaned', con=engine, if_exists="append", index=False)
+                self.email_message += f"Successfully loaded {len(data)} rows  to database (uncleaned table)\n"
             # in case database connection fails, data will be stored localy in csv file
 
         # catch any exception and save it's content to attach that information to email
@@ -420,7 +430,6 @@ class AmazonScrapeGPU():
     def run_etl_pipeline(self):
         self.load_to_db()
         self.send_email()
-
 
 
 
