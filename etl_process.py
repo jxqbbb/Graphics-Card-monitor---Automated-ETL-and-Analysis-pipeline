@@ -30,8 +30,22 @@ class AmazonScrapeGPU():
     # it is necessary to provide both the email and password associated with the email account.
     # this will enable monitoring of the script to ensure that everything is running smoothly and to quickly
 
+    # database parameters:
+    # in my case MySQL database is used and I retrive my login and password from windows environment variables
+    # generally all default parameters are based on my needs
+    # data - pandas DataFrame retrived from get_gpu_data function
+    # database_user - RDBMS instance user or login
+    # database_password - RDBMS instance password
+    # database - name of used database
+    # table - table of chosen database where data should be stored
+    # host - host of the database
+    # engine - optional parameter for non MySQL users, valid sqlalchemy create_enginge string should be passed
+
     def __init__(self,number_of_pages=40,starting_page=1,headers="unchanged",base_url="unchanged",
-                email = os.environ.get("email"),email_pass=os.environ.get("email_pass")):
+                email = os.environ.get("email"),email_pass=os.environ.get("email_pass")
+                 ,database_user=os.environ.get("DB_USER"), database_password=os.environ.get("DB_PASS"),
+                 database="gpu_monitoring", table="gpu_info", host="localhost", engine_str=None
+                 ):
 
         #"the actual values of 'headers' and 'base_url' are not assigned as default parameters only for readability"
         #"these values are quite long"
@@ -72,6 +86,14 @@ class AmazonScrapeGPU():
         self.email_pass = email_pass
         # content of raport itself will be upadated during execution of the script
         self.email_message = f"Data from {self.date}\n"
+
+        # database connection parameters
+        self.engine_str = engine_str
+        self.host = host
+        self.table = table
+        self.database = database
+        self.database_password = database_password
+        self.database_user = database_user
 
 
     # --------------------------THIS IS "EXTRACT" PART OF THE PROJECT--------------------------
@@ -316,8 +338,7 @@ class AmazonScrapeGPU():
 
 
     # this function is used to send raport when program is finished running or was interrupted
-    # double underscore indicates that it is private function
-    def __send_email(self):
+    def send_email(self):
         # content of the email, sender, reciver, subject and message
         em = EmailMessage()
         em["From"] = self.email
@@ -365,20 +386,20 @@ class AmazonScrapeGPU():
     # table - table of chosen database where data should be stored
     # host - host of the database
     # engine_str - optional parameter for non MySQL users, valid sqlalchemy create_enginge string should be passed
-    # double underscore indicates that it is private function
-    def __load_to_db(self,data,database_user=os.environ.get("DB_USER"),database_password=os.environ.get("DB_PASS"),\
-                      database="gpu_monitoring",table="gpu_info",host="localhost",engine_str=None\
-                    ):
+    def load_to_db(self):
+        # using collected and prepared data
+        data = self.get_gpu_data()
+
         # try to connect to specified database
         try:
             # if engine parameter was not passed create engine based on parameters for MySQL
-            if not engine_str:
+            if not self.engine_str:
             # connecting using sqlalchemy package
-                engine = create_engine(f'mysql+pymysql://{database_user}:{database_password}@{host}/{database}')
+                engine = create_engine(f'mysql+pymysql://{self.database_user}:{self.database_password}@{self.host}/{self.database}')
             else:
-                engine = create_engine(engine_str)
+                engine = create_engine(self.engine_str)
             # insert data into the table, if table doesn't exist it will be created otherwhise data will be appended
-            data.to_sql(name=table,con=engine,if_exists="append",index=False)
+            data.to_sql(name=self.table,con=engine,if_exists="append",index=False)
             self.email_message+= f"Data successfully loaded {len(data)} rows  to database\n"
             # in case database connection fails, data will be stored localy in csv file
 
@@ -386,7 +407,7 @@ class AmazonScrapeGPU():
         except Exception as e:
             self.email_message+= f"Data couldn't be loaded to database - {e}, it was saved to csv file\n"
             # path of the file will have the same name as table, no specific path is specified so it will be saved in the script's folder
-            path = f"{table}.csv"
+            path = f"{self.table}.csv"
             # if file exists, append data
             if os.path.isfile(path):
                 data.to_csv(path,na_rep="NaN",mode="a",index=False)
@@ -397,11 +418,12 @@ class AmazonScrapeGPU():
     # this function wraps whole automated ETL process and executes it
     # and sends email with results raport
     def run_etl_pipeline(self):
-        self.__load_to_db(self.get_gpu_data())
-        self.__send_email()
+        self.load_to_db()
+        self.send_email()
 
-AmazonScrapeGPU().run_etl_pipeline()
 
+# run whole ETL pipeline
+AmazonScrapeGPU(number_of_pages=1).run_etl_pipeline()
 
 
 
