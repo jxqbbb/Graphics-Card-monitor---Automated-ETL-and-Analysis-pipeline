@@ -81,10 +81,10 @@ class AmazonScrapeGPU():
         # DataFrame which is the main storage of the scraped data before it will be send to database
         self.data_frame = pd.DataFrame(columns=["model","price_USD","brand","ram_GB","gpu_clock_speed_MHz","date"])
 
-        # variables needed for sending raport when script is finished
+        # variables needed for sending report when script is finished
         self.email = email
         self.email_pass = email_pass
-        # content of raport itself will be upadated during execution of the script
+        # content of report itself will be upadated during execution of the script
         self.email_message = f"Data from {self.date}\n"
 
         # database connection parameters
@@ -219,7 +219,7 @@ class AmazonScrapeGPU():
                 break
 
             # conntinue if request didn't raise error
-            # information about error which occured is attached to email raport
+            # information about error which occured is attached to email report
             else:
                 # check if website's response is ok
                 if r.status_code < 300 and r.status_code > 100:
@@ -248,7 +248,7 @@ class AmazonScrapeGPU():
                                     break
                 # if status code is not 200 it might suggest that we reached last page, or url is invalid
                 # or connection was blocked by amazon, either way there so point to continnue accessing another page
-                # information about negative response which occured is attached to email raport
+                # information about negative response which occured is attached to email report
                 elif r.status_code == 400:
                     self.email_message+= f'Iterate pages:{current_page} invalid request\n'
                     break
@@ -337,13 +337,13 @@ class AmazonScrapeGPU():
 
 
 
-    # this function is used to send raport when program is finished running or was interrupted
+    # this function is used to send report when program is finished running or was interrupted
     def send_email(self):
         # content of the email, sender, reciver, subject and message
         em = EmailMessage()
         em["From"] = self.email
         em["To"] = self.email
-        em["Subject"] = "Automated data extracting and transforming raport (ScrapeAmazonGPU)"
+        em["Subject"] = "Automatic ETL report (ScrapeAmazonGPU)"
         body = self.email_message
         em.set_content(body)
 
@@ -400,7 +400,7 @@ class AmazonScrapeGPU():
                 engine = create_engine(self.engine_str)
             # insert data into the table, if table doesn't exist it will be created otherwhise data will be appended
             data.to_sql(name=self.table,con=engine,if_exists="append",index=False)
-            self.email_message+= f"Data successfully loaded {len(data)} rows  to database\n"
+            self.email_message+= f"Successfully loaded {len(data)} rows  to database\n"
             # in case database connection fails, data will be stored localy in csv file
 
         # catch any exception and save it's content to attach that information to email
@@ -416,14 +416,13 @@ class AmazonScrapeGPU():
                 data.to_csv(path,na_rep="NaN",mode="w",index=False)
 
     # this function wraps whole automated ETL process and executes it
-    # and sends email with results raport
+    # and sends email with results report
     def run_etl_pipeline(self):
         self.load_to_db()
         self.send_email()
 
 
-# run whole ETL pipeline
-AmazonScrapeGPU(number_of_pages=1).run_etl_pipeline()
+
 
 
 
