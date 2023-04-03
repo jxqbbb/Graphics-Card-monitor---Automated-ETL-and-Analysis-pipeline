@@ -66,6 +66,8 @@ Note that time series analysis cannot be performed yet due to the lack of data. 
 - Changing dashboard tool, honestly matplotlib and seaborn python packages are not best tools
   for such things, I would consider using something like Tabelau or Power BI
 - Some intersting idea is also developing website which would automatically update dashboard when script is ran  
+- Using multithreading to speed up data collecting and even collect more data
+- Implement rotating proxies or IP addresses not to be detected as a bot or web scraper
   
   
 
