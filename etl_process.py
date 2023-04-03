@@ -295,11 +295,26 @@ class AmazonScrapeGPU():
                 # if given value is in gigahertz delete postfix and transform value to megahertz
                 if "ghz" in value:
                     value = float(value.replace("ghz",""))
+                    # GHz to MHz convert rate is x1000
                     value = value*1000
                     return value
                 # else just delete "mhz" postfix and return numeric value
                 elif "mhz" in value:
                     return float(value.replace("mhz",""))
+                else:
+                    return value
+
+            # similar to clock_speed_mhz
+            def ram_to_gb(value):
+                value = value.lower()
+
+                if "mb" in value:
+                    value = float(value.replace("mb", ""))
+                    # MB to GB convert rate is x0.001
+                    value = value * 0.001
+                    return value
+                elif "gb" in value:
+                    return float(value.replace("gb", ""))
                 else:
                     return value
 
@@ -315,7 +330,7 @@ class AmazonScrapeGPU():
             df["price_USD"] = df["price_USD"].astype("float64")
 
             # remove gigabytes postfix from RAM size
-            df["ram_GB"] = df["ram_GB"].str.replace("GB","",regex=False)
+            df["ram_GB"] = df["ram_GB"].apply(ram_to_gb)
             # change "unkown" values to NaN values for convenience in analysis
             df["ram_GB"].replace({"unknown":np.nan},inplace=True)
             # convert RAM gigaytes size to float for convenience in analysis
