@@ -281,74 +281,74 @@ class AmazonScrapeGPU():
     # double underscore indicates that this should be private method
     def __prepare_data(self):
         # check if script was able to scrape anything
-        if len(self.data_frame) > 0:
 
-            print("cleaning")
-            # GPU clock speed has "GHz"(gigahertz) or "MHz"(megahertz) postfix
-            # these postfix is deleted and numeric value is returned as speed in megahertz
-            def clock_speed_mhz(value):
-                # make whole string lower letter for convenience of working with it
-                value = value.lower()
+        print("cleaning")
+        # GPU clock speed has "GHz"(gigahertz) or "MHz"(megahertz) postfix
+        # these postfix is deleted and numeric value is returned as speed in megahertz
+        def clock_speed_mhz(value):
+            # make whole string lower letter for convenience of working with it
+            value = value.lower()
 
-                # check wether that string contains "ghz" or "mhz" postfix and based on that modify and return value
+            # check wether that string contains "ghz" or "mhz" postfix and based on that modify and return value
 
-                # if given value is in gigahertz delete postfix and transform value to megahertz
-                if "ghz" in value:
-                    value = float(value.replace("ghz",""))
-                    # GHz to MHz convert rate is x1000
-                    value = value*1000
-                    return value
-                # else just delete "mhz" postfix and return numeric value
-                elif "mhz" in value:
-                    return float(value.replace("mhz",""))
-                else:
-                    return value
+            # if given value is in gigahertz delete postfix and transform value to megahertz
+            if "ghz" in value:
+                value = float(value.replace("ghz",""))
+                # GHz to MHz convert rate is x1000
+                value = value*1000
+                return value
+            # else just delete "mhz" postfix and return numeric value
+            elif "mhz" in value:
+                return float(value.replace("mhz",""))
+            else:
+                return value
 
-            # similar to clock_speed_mhz
-            def ram_to_gb(value):
-                value = value.lower()
+        # similar to clock_speed_mhz
+        def ram_to_gb(value):
+            value = value.lower()
 
-                if "mb" in value:
-                    value = float(value.replace("mb", ""))
-                    # MB to GB convert rate is x0.001
-                    value = value * 0.001
-                    return value
-                elif "gb" in value:
-                    return float(value.replace("gb", ""))
-                else:
-                    return value
+            if "mb" in value:
+                value = float(value.replace("mb", ""))
+                # MB to GB convert rate is x0.001
+                value = value * 0.001
+                return value
+            elif "gb" in value:
+                return float(value.replace("gb", ""))
+            else:
+                return value
 
-            # get scraped data
-            # copy of original data will be modified, in case if something goes wrong there is a backup
-            df = self.data_frame.copy()
+        # get scraped data
+        # copy of original data will be modified, in case if something goes wrong there is a backup
+        df = self.data_frame.copy()
 
-            # fetched price has comma at the end and and delimiter between number, it will be removed
-            df["price_USD"] = df["price_USD"].str.replace(".","",regex=False).str.replace(",","",regex=False)
-            # change "unkown" values to NaN values for convenience in analysis
-            df["price_USD"].replace({"unknown":np.nan},inplace=True)
-            # convert price to float for convenience in analysis
-            df["price_USD"] = df["price_USD"].astype("float64")
+        # fetched price has comma at the end and and delimiter between number, it will be removed
+        df["price_USD"] = df["price_USD"].str.replace(".","",regex=False).str.replace(",","",regex=False)
+        # change "unkown" values to NaN values for convenience in analysis
+        df["price_USD"].replace({"unknown":np.nan},inplace=True)
+        # convert price to float for convenience in analysis
+        df["price_USD"] = df["price_USD"].astype("float64")
 
-            # remove gigabytes postfix from RAM size
-            df["ram_GB"] = df["ram_GB"].apply(ram_to_gb)
-            # change "unkown" values to NaN values for convenience in analysis
-            df["ram_GB"].replace({"unknown":np.nan},inplace=True)
-            # convert RAM gigaytes size to float for convenience in analysis
-            df["ram_GB"] = df["ram_GB"].astype("float64")
+        # remove gigabytes postfix from RAM size
+        df["ram_GB"] = df["ram_GB"].apply(ram_to_gb)
+        # change "unkown" values to NaN values for convenience in analysis
+        df["ram_GB"].replace({"unknown":np.nan},inplace=True)
+        # convert RAM gigaytes size to float for convenience in analysis
+        df["ram_GB"] = df["ram_GB"].astype("float64")
 
-            # apply previously created function to GPU clock speed in MHz
-            df["gpu_clock_speed_MHz"] = df["gpu_clock_speed_MHz"].apply(clock_speed_mhz)
-            # change "unkown" values to NaN values for convenience in analysis
-            df["gpu_clock_speed_MHz"].replace({"unknown":np.nan},inplace=True)
-            # makes sure pandas treats these values as float
-            df["gpu_clock_speed_MHz"] = df["gpu_clock_speed_MHz"].astype("float64")
+        # apply previously created function to GPU clock speed in MHz
+        df["gpu_clock_speed_MHz"] = df["gpu_clock_speed_MHz"].apply(clock_speed_mhz)
+        # change "unkown" values to NaN values for convenience in analysis
+        df["gpu_clock_speed_MHz"].replace({"unknown":np.nan},inplace=True)
+        # makes sure pandas treats these values as float
+        df["gpu_clock_speed_MHz"] = df["gpu_clock_speed_MHz"].astype("float64")
 
-            # getting rid of whitespaces in string columns
-            df["model"] = df["model"].str.strip()
-            df["brand"] = df["brand"].str.strip()
+        # getting rid of whitespaces in string columns
+        df["model"] = df["model"].str.strip()
+        df["brand"] = df["brand"].str.strip()
 
-            # return cleaned DataFrame
-            return df
+        # return cleaned DataFrame
+        return df
+
 
 
 
@@ -378,17 +378,22 @@ class AmazonScrapeGPU():
         self.__iterate_pages()
         # clean that data but in case if something goes wrong return uncleaned data which is also good enough
         # data cleaning is in most cases manual job and it's hard to predict format of hundreds collected values
-        # to automate that process but based on my research and tests this should work
-        try:
-            # create variable indicating if data was successfully cleaned or not
-            # it will be need when insterting data to database
-            self.is_data_cleaned = True
-            return self.__prepare_data()
-        except:
-            self.is_data_cleaned = False
-            # note that cleaning wasn't sucessful
-            self.email_message += "Cleaning part of the script failed\n"
-            return self.data_frame
+        # to automate that process but based on my research and tests "__prepare_data" function should work
+
+        # first check if any data was collected
+        if len(self.data_frame) > 0:
+            try:
+                # create variable indicating if data was successfully cleaned or not
+                # it will be need when inserting data to database
+                self.is_data_cleaned = True
+                return self.__prepare_data()
+            except:
+                self.is_data_cleaned = False
+                # update email message that cleaning wasn't successful
+                self.email_message += "Cleaning part of the script failed\n"
+                return self.data_frame
+        else:
+            self.email_message+= "No data was collected"
 
 
 
@@ -396,9 +401,9 @@ class AmazonScrapeGPU():
     # --------------------------THIS IS "LOAD" PART OF THE PROJECT--------------------------
 
     # load collected data to database
-    # in my case MySQL database is used and I retrive my login and password from windows environment variables
+    # in my case MySQL database is used and I retrieve my login and password from windows environment variables
     # generally all default parameters are based on my needs
-    # data - pandas DataFrame retrived from get_gpu_data function
+    # data - pandas DataFrame retrieved from get_gpu_data function
     # database_user - RDBMS instance user or login
     # database_password - RDBMS instance password
     # database - name of used database
@@ -408,8 +413,9 @@ class AmazonScrapeGPU():
     def load_to_db(self):
         # using collected and prepared data
         data = self.get_gpu_data()
-        # check if any data was collected
-        if len(data) > 0:
+
+        # check if any data was returned at all
+        if isinstance(data, pd.DataFrame):
             # try to connect to specified database
             try:
                 # if engine parameter was not passed create engine based on parameters for MySQL
@@ -443,8 +449,7 @@ class AmazonScrapeGPU():
                 else:
                     data.to_csv(path,na_rep="NaN",mode="w",index=False)
 
-        else:
-            self.email_message+="No data was collected"
+
     # this function wraps whole automated ETL process and executes it
     # and sends email with results report
     def run_etl_pipeline(self):
