@@ -393,38 +393,43 @@ class AmazonScrapeGPU():
     def load_to_db(self):
         # using collected and prepared data
         data = self.get_gpu_data()
+        # check if any data was collected
+        if len(data) > 0:
+            # try to connect to specified database
+            try:
+                # if engine parameter was not passed create engine based on parameters for MySQL
+                if not self.engine_str:
+                # connecting using sqlalchemy package
+                    engine = create_engine(f'mysql+pymysql://{self.database_user}:{self.database_password}@{self.host}/{self.database}')
+                else:
+                    engine = create_engine(self.engine_str)
+                # insert data into the table, if table doesn't exist it will be created otherwhise data will be appended
+                # if data was cleaned successfully insert data into main table
+                if self.is_data_cleaned:
+                    data.to_sql(name=self.table,con=engine,if_exists="append",index=False)
+                    self.email_message+= f"Successfully loaded {len(data)} rows  to database\n"
+                    engine.dispose()
+                # otherwise insert data into backup table and store data for later manual cleaning
+                else:
+                    data.to_sql(name=f'{self.table}_uncleaned', con=engine, if_exists="append", index=False)
+                    self.email_message += f"Successfully loaded {len(data)} rows  to database (uncleaned table)\n"
+                    engine.dispose()
+                # in case database connection fails, data will be stored localy in csv file
 
-        # try to connect to specified database
-        try:
-            # if engine parameter was not passed create engine based on parameters for MySQL
-            if not self.engine_str:
-            # connecting using sqlalchemy package
-                engine = create_engine(f'mysql+pymysql://{self.database_user}:{self.database_password}@{self.host}/{self.database}')
-            else:
-                engine = create_engine(self.engine_str)
-            # insert data into the table, if table doesn't exist it will be created otherwhise data will be appended
-            # if data was cleaned successfully insert data into main table
-            if self.is_data_cleaned:
-                data.to_sql(name=self.table,con=engine,if_exists="append",index=False)
-                self.email_message+= f"Successfully loaded {len(data)} rows  to database\n"
-            # otherwise insert data into backup table and store data for later manual cleaning    
-            else:
-                data.to_sql(name=f'{self.table}_uncleaned', con=engine, if_exists="append", index=False)
-                self.email_message += f"Successfully loaded {len(data)} rows  to database (uncleaned table)\n"
-            # in case database connection fails, data will be stored localy in csv file
+            # catch any exception and save it's content to attach that information to email
+            except Exception as e:
+                self.email_message+= f"Data couldn't be loaded to database - {e}, it was saved to csv file\n"
+                # path of the file will have the same name as table, no specific path is specified so it will be saved in the script's folder
+                path = f"{self.table}.csv"
+                # if file exists, append data
+                if os.path.isfile(path):
+                    data.to_csv(path,na_rep="NaN",mode="a",index=False)
+                # if file doesn't exist, create it
+                else:
+                    data.to_csv(path,na_rep="NaN",mode="w",index=False)
 
-        # catch any exception and save it's content to attach that information to email
-        except Exception as e:
-            self.email_message+= f"Data couldn't be loaded to database - {e}, it was saved to csv file\n"
-            # path of the file will have the same name as table, no specific path is specified so it will be saved in the script's folder
-            path = f"{self.table}.csv"
-            # if file exists, append data
-            if os.path.isfile(path):
-                data.to_csv(path,na_rep="NaN",mode="a",index=False)
-            # if file doesn't exist, create it
-            else:
-                data.to_csv(path,na_rep="NaN",mode="w",index=False)
-
+        else:
+            self.email_message+="No data was collected"
     # this function wraps whole automated ETL process and executes it
     # and sends email with results report
     def run_etl_pipeline(self):
