@@ -7,7 +7,7 @@ This Python and SQL project scrapes data on GPU sales offers posted on Amazon, p
 - Cleaning the data 🧹
 - Loading it into SQL database 💾
 - Sending a summary report to email 📩
-### Analysis Process (analysis_process.py)
+### Analysis process (analysis_process.py)
 - Fetching data from database 💾
 - Performing summary statistics and analysis of the data 🔍
 - Visualizing insights of the data 📊
@@ -46,9 +46,10 @@ Sources:
 - Data source:
   - [Amazon   ](https://www.amazon.com/)
 ## Analysis part results
-![p1](https://user-images.githubusercontent.com/121947030/229366557-4087583d-4727-4689-a7a4-e7642a78d262.png)
-![p2](https://user-images.githubusercontent.com/121947030/229366568-f46beb7d-254f-466c-b2ac-a155bfce250b.png)
-Note that time series analysis cannot be performed yet due to the lack of data. However, it would make sense to examine the changes in prices and specifications when data is collected from different time periods later on.
+![p1](https://user-images.githubusercontent.com/121947030/230118328-3e2bdd04-6214-4778-b661-7c21afd0396c.png)
+![p2](https://user-images.githubusercontent.com/121947030/230118372-c6f8a269-efd9-44f8-8e17-6eeb784f2bf9.png)
+
+Note that time series analysis cannot be performed yet due to the lack of data. However, it will make sense to examine the changes in prices and specifications when data is collected from different time periods later on.
 ## Other project snippets
 ### Example email reports:
 ![example_fail_email](https://user-images.githubusercontent.com/121947030/229369029-926ac054-c852-447f-bce4-cf07eb6de034.png)
