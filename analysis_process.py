@@ -50,10 +50,31 @@ def gpu_analysis_dashboard(plot_name1=None,plot_name2=None,database_user=os.envi
         return data
 
     # here the analysis begins, data is collected from database
+    # and cleaned again for more transparent analysis
     df = __load_from_db()
-
-    # some visualization based on collected GPU data, there is no time series analysis yet due to lack of data from different
-    # time peirods
+    # replace all "unknown" values with np.nan, previously "unkown" was more convinient to load it into database
+    df.replace({"unknown":np.nan},inplace=True)
+    # drop all rows without model name
+    df.dropna(subset="model",inplace=True)
+    # drop all rows with 3 or more missing values
+    df.dropna(thresh=3,inplace=True)
+    # take into account top 10 brands and top 15 models that are most common
+    df = df.loc[df["brand"].isin(df["brand"].value_counts()[:10].index)]
+    df = df.loc[df["model"].isin(df["model"].value_counts()[:15].index)]
+    # clean outlifers for price and gpu_clock_speed_MHz by calculating interquantile range and leaving values that fit into 
+    # 1.5x range of interquantile range
+    q3_price=df["price_USD"].quantile(0.75)
+    q1_price=df["price_USD"].quantile(0.25)
+    iqr_price = q3_price-q1_price
+    df = df.loc[(df["price_USD"]<(q3_price+(iqr_price*1.5))) & (df["price_USD"]>(q1_price-(iqr_price*1.5)))]
+    q3_clock=df["gpu_clock_speed_MHz"].quantile(0.75)
+    q1_clock=df["gpu_clock_speed_MHz"].quantile(0.25)
+    iqr_clock = q3_clock-q1_clock
+    df = df.loc[(df["gpu_clock_speed_MHz"]<(q3_clock+(iqr_clock*1.5))) & (df["gpu_clock_speed_MHz"]>(q1_clock-(iqr_clock*1.5)))]
+    # "df" DataFrame will have duplicates and "df_uniqe" will not, these two DataFrames will be used for other analysis
+    df_unique = df.copy().drop_duplicates()
+    
+    # there is no time series analysis yet due to lack of data from different time peirods
 
     # building dashboard split into 2 matplotlib figures
 
@@ -64,7 +85,7 @@ def gpu_analysis_dashboard(plot_name1=None,plot_name2=None,database_user=os.envi
     # data needed for first plot
 
     # avarage price for each model on sale
-    price_by_model = df.groupby(["model"]).agg(price=("price_USD", "mean")).sort_values(by="price", ascending=False)
+    price_by_model = df_unique.groupby(["model"]).agg(price=("price_USD", "mean")).sort_values(by="price", ascending=False)
     price_by_model.reset_index(inplace=True)
 
     # first plot
@@ -80,7 +101,7 @@ def gpu_analysis_dashboard(plot_name1=None,plot_name2=None,database_user=os.envi
     # data needed for second plot
 
     # aggregated data describing avarage GPU price by brand
-    price_by_brand = df.groupby(["brand", "model"])["price_USD"].mean().reset_index().groupby("brand")[
+    price_by_brand = df_unique.groupby(["brand", "model"])["price_USD"].mean().reset_index().groupby("brand")[
         "price_USD"].mean().sort_values()
 
     # second plot
@@ -99,7 +120,7 @@ def gpu_analysis_dashboard(plot_name1=None,plot_name2=None,database_user=os.envi
               textprops={"color": "black"})
     # customization
     ax[2].set_ylabel("Which GPU brand is \n the most sold?", fontsize=16, rotation=0, labelpad=110)
-
+    ax[2].legend(bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0)
     # save first part of the dasboard
     if plot_name1:
         plt.savefig(plot_name1,dpi=200,bbox_inches='tight')
@@ -113,7 +134,7 @@ def gpu_analysis_dashboard(plot_name1=None,plot_name2=None,database_user=os.envi
     # to get 100 MHz of clock speed for each GPU model
 
     # group data into models
-    model_group = df.groupby("model")
+    model_group = df_unique.groupby("model")
     # calculate mean price for each model
     x = model_group["price_USD"].mean()
     # calculate mean amount of RAM for each GPU model
@@ -143,7 +164,7 @@ def gpu_analysis_dashboard(plot_name1=None,plot_name2=None,database_user=os.envi
     axs[0, 1].set_ylabel('')
 
     # third plot, no data transforming was needed
-    sns.regplot(data=df, x="gpu_clock_speed_MHz", y="price_USD", ax=axs[1, 0])
+    sns.regplot(data=df_unique, x="gpu_clock_speed_MHz", y="price_USD", ax=axs[1, 0])
 
     # customization
     axs[1, 0].set_title('Relation between price and clock speed')
@@ -153,12 +174,12 @@ def gpu_analysis_dashboard(plot_name1=None,plot_name2=None,database_user=os.envi
     # data needed for fourth plot
 
     # binning GPU's clock speeds into groups
-    df["MHz_group"] = pd.cut(df["gpu_clock_speed_MHz"],
+    df_unique["MHz_group"] = pd.cut(df["gpu_clock_speed_MHz"],
                              bins=np.linspace(df["gpu_clock_speed_MHz"].min(), df["gpu_clock_speed_MHz"].max(), 5),
                              labels=["very low", "low", "moderate", "high"])
 
     # fourth plot
-    sns.barplot(data=df, x="MHz_group", y="price_USD", ax=axs[1, 1])
+    sns.barplot(data=df_unique, x="MHz_group", y="price_USD", ax=axs[1, 1])
 
     # customization
     axs[1, 1].set_title('Avarage prices in different clock speed categories')
@@ -169,7 +190,7 @@ def gpu_analysis_dashboard(plot_name1=None,plot_name2=None,database_user=os.envi
     sns.boxplot(data=df["price_USD"], ax=axs[2, 0])
 
     axs[2, 0].set_xticklabels(["Prices"])
-    axs[2, 0].set_title('Price distribution in sales offers')
+    axs[2, 0].set_title('Price distribution in all Amazon sales offers')
     axs[2, 0].set_xlabel('')
     axs[2, 0].set_ylabel('Count', fontsize=14, rotation=0, labelpad=70)
 
@@ -177,7 +198,7 @@ def gpu_analysis_dashboard(plot_name1=None,plot_name2=None,database_user=os.envi
     sns.histplot(data=df["price_USD"], bins=7, kde=True, ax=axs[2, 1])
 
     # customization
-    axs[2, 1].set_title('Price distribution in sales offers')
+    axs[2, 1].set_title('Price distribution in all Amazon sales offers')
     axs[2, 1].set_xlabel('Prices')
     axs[2, 1].set_ylabel('')
 
@@ -190,4 +211,5 @@ def gpu_analysis_dashboard(plot_name1=None,plot_name2=None,database_user=os.envi
 
     # display the plot
     plt.show()
- 
+
+gpu_analysis_dashboard("p1","p2")
